@@ -1,0 +1,5 @@
+TTS
+numpy
+pulsectl
+sounddevice
+
