@@ -93,6 +93,10 @@ superset of `module-remap-source`. So a similar command might be:
 pactl load-module module-virtual-source source_name=TTSMic master=example_sink.monitor
 ```
 
-I think I prefer this way (it shows up a little nice by default and it also
-makes more sense), but this is unfortunately undocumented.
+I think I prefer this way (it shows up a little nicer by default and it also
+makes more sense), but this is unfortunately undocumented. One caveat with this
+module is that it's meant to filter another source (or alternatively a sink for
+`module-virtual-sink`) so you *have* to specify a master source, otherwise
+the system default source will be used (which is probably not what you want!).
+
 
