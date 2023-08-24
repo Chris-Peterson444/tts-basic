@@ -1,4 +1,5 @@
 TTS
+JACK-Client
 numpy
 pulsectl
 sounddevice
