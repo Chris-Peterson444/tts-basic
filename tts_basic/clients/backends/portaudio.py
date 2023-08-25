@@ -25,20 +25,25 @@ class PortAudioBackend(AudioBackend):
         self.channels = channels
         self.dtype = dtype
 
-        self._device_obj: dict = self._select_device(self.source_device)
-        self._device_index = self._device_obj['index']
+        self._device_obj: Optional[dict] = self._select_device(
+            self.source_device,
+        )
+        if self._device_obj is None:
+            self._device_index = None
+        else:
+            self._device_index = self._device_obj['index']
         # print(f'Using device {self._device_obj!r}')
 
     def _select_device(
             self,
             device: Optional[Union[int, str]],
-    ) -> dict:
+    ) -> Optional[dict]:
         """ Select the audio device. """
 
         if device is None:
             return None
         if isinstance(device, int):
-            return device
+            return self.query_devices()[device]
         elif isinstance(device, str):
             devices = self.query_devices()
             for dev in devices:
@@ -61,17 +66,22 @@ class PortAudioBackend(AudioBackend):
 
     def play(
         self,
-        data: np.ndarray,
+        data: Union[list[list[float]], np.ndarray],
         blocking: Optional[bool] = False,
     ) -> None:
         """ Play the audio data. """
 
-        channels, samples = data.shape
+        if isinstance(data, list):
+            audio_data: np.ndarray = np.array(data, dtype=self.dtype)
+        else:
+            audio_data: np.ndaarry = data  # type: ignore
+
+        channels, samples = audio_data.shape
         if channels == 1:
-            data = data[0]
+            audio_data = audio_data[0]
         try:
             sd.play(
-                data=data,
+                data=audio_data,
                 device=self._device_index,
                 samplerate=self.sample_rate,
                 blocking=blocking

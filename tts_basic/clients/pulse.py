@@ -1,12 +1,14 @@
+from types import TracebackType
 from typing import Optional
 from typing import Type
 from typing import Union
 
+import numpy as np
 import pulsectl
+from .backends.audio_backend import AudioBackend
+from .backends.portaudio import PortAudioBackend
 
 from .audio_client import AudioClient
-from backends.audio_backend import AudioBackend
-from backends.portaudio import PortAudioBackend
 
 
 class PulseAudioClient(AudioClient):
@@ -22,30 +24,30 @@ class PulseAudioClient(AudioClient):
 
     def __init__(
         self,
-        client_name: Optional[str] = 'TTSBasiClient',
-        sink_name: Optional[str] = 'TTSBasicSink',
-        source_name: Optional[str] = 'TTSBasicSource',
-        sample_rate: Optional[int] = 48000,
-        channels: Optional[int] = 2,
-        dtype: Optional[str] = 'float32',
-        audio_backend: Optional[Type[AudioBackend]] = PortAudioBackend,
-        auto_resample: Optional[bool] = True,
+        client_name: str = 'TTSBasiClient',
+        sink_name: str = 'TTSBasicSink',
+        source_name: str = 'TTSBasicSource',
+        sample_rate: int = 48000,
+        channels: int = 2,
+        dtype: str = 'float32',
+        audio_backend: Type[AudioBackend] = PortAudioBackend,
+        auto_resample: bool = True,
     ) -> None:
 
         self.pulse = pulsectl.Pulse(client_name)
         self.sink_name: str = sink_name
         self.source_name: str = source_name
-        self._sink_id: Optional[str] = None
-        self._source_id: Optional[str] = None
+        self._sink_id: str = ''
+        self._source_id: str = ''
 
         self.sample_rate = sample_rate
         self.channels = channels
         self.dtype = dtype
-        self.audio_backend_constructor: AudioBackend = audio_backend
+        self.audio_backend_constructor: Type[AudioBackend] = audio_backend
 
         self.auto_resample = auto_resample
 
-        self.dummy_sink_index: Optional[str] = None
+        self.dummy_sink_index: str = ''
 
     def _load_module(
             self,
@@ -79,7 +81,7 @@ class PulseAudioClient(AudioClient):
             args=args,
         )
 
-    def _create_sources(self, master: str) -> None:
+    def _create_source(self, master: str) -> None:
         """ Create sources on the audio server. """
 
         args = (
@@ -95,7 +97,7 @@ class PulseAudioClient(AudioClient):
             args=args,
         )
 
-    def _create_dummy_sink(self) -> None:
+    def _load_dummy_sink(self) -> None:
         """ Create a dummy sink on the audio server. """
 
         self.dummy_sink_index = self._load_module(
@@ -103,9 +105,16 @@ class PulseAudioClient(AudioClient):
             args=f'sink_name={self.DUMMY_SINK_NAME}',
         )
 
-    def __enter__(self) -> AudioServer:
-        self._create_dummy_sink()
-        self._create_sources(master=f'{self.DUMMY_SINK_NAME}.monitor')
+    def _unload_dummy_sink(self) -> None:
+        """ Unload the dummy sink on the audio server. """
+
+        if self.dummy_sink_index != '':
+            self._unload_module(self.dummy_sink_index)
+            self.dummy_sink_index = ''
+
+    def __enter__(self) -> AudioClient:
+        self._load_dummy_sink()
+        self._create_source(master=f'{self.DUMMY_SINK_NAME}.monitor')
 
         self._audio_backend_instance = self.audio_backend_constructor(
             source_device=self.DUMMY_SINK_NAME,
@@ -125,22 +134,28 @@ class PulseAudioClient(AudioClient):
     ) -> Union[bool, None]:
         # self._unload_module(self._sink_id)
         self._unload_module(self._source_id)
-        self._unload_module(self.dummy_sink_index)
+        self._unload_dummy_sink()
+
+        return None
 
     def resample(
             self,
-            data: list[list[float]],
+            data: Union[list[list[float]], np.ndarray],
             original_rate: int,
     ) -> np.ndarray:
         """ Resample the audio data to the sample rate of the audio server. """
 
-        data = np.array(data, dtype=self.dtype)
+        if isinstance(data, list):
+            np_data: np.ndarray = np.array(data, dtype=self.dtype)
+        else:
+            np_data: np.ndarray = data  # type: ignore
+
         # TODO: Do real resampling
         # Currently works for CoquiTTS models, which return 22050 Hz audio
         # This means it always samples up to 44100 Hz, but it sounds
         # acceptable for now
-        data = np.repeat(data, self.sample_rate//original_rate, axis=1)
-        return data
+        np_data = np.repeat(np_data, self.sample_rate//original_rate, axis=1)
+        return np_data
 
     def play(
             self,
@@ -151,9 +166,14 @@ class PulseAudioClient(AudioClient):
         """ Play audio data on the audio server. """
 
         if isinstance(data, list):
-            data = np.array(data, dtype=self.dtype)
+            np_data: np.ndarray = np.array(data, dtype=self.dtype)
+        else:
+            np_data: np.ndarray = data  # type: ignore
+
+        if samplerate is None:
+            samplerate = self.sample_rate
 
         if self.auto_resample and samplerate != self.sample_rate:
-            data = self.resample(data=data, original_rate=samplerate)
+            np_data = self.resample(data=np_data, original_rate=samplerate)
 
-        self._audio_backend_instance.play(data, blocking=blocking)
+        self._audio_backend_instance.play(np_data, blocking=blocking)

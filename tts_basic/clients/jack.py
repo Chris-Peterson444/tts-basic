@@ -23,10 +23,10 @@ class JackAudioClient(AudioClient):
 
     def __init__(
             self,
-            client_name: Optional[str] = 'TTSBasiClient',
-            output_port_name: Optional[str] = 'TTSBasicOutput',
-            auto_resample: Optional[bool] = True,
-            dtype: Optional[str] = 'float32',
+            client_name: str = 'TTSBasiClient',
+            output_port_name: str = 'TTSBasicOutput',
+            auto_resample: bool = True,
+            dtype: str = 'float32',
     ) -> None:
 
         self.client = jack.Client(client_name)
@@ -68,7 +68,7 @@ class JackAudioClient(AudioClient):
             data = self.data_queue.get_nowait()
             for channel, port in zip(data, self.client.outports):
                 # print(port.get_array().shape)
-                port.get_array()[:] = channel
+                port.get_array()[:] = channel  # type: ignore
 
         return callback
 
@@ -88,20 +88,30 @@ class JackAudioClient(AudioClient):
         self.client.deactivate()
         self.client.close()
 
+        return None
+
     def resample(
             self,
-            data: list[list[float]],
+            data: Union[list[list[float]], np.ndarray],
             original_rate: int,
     ) -> np.ndarray:
         """ Resample the audio data to the sample rate of the audio server. """
 
-        data = np.array(data, dtype=self.dtype)
+        if isinstance(data, list):
+            audio_data: np.ndarray = np.array(data, dtype=self.dtype)
+        else:
+            audio_data: np.ndarray = data  # type: ignore
+
         # TODO: Do real resampling
         # Currently works for CoquiTTS models, which return 22050 Hz audio
         # This means it always samples up to 44100 Hz, but it sounds
         # acceptable for now
-        data = np.repeat(data, self.sample_rate//original_rate, axis=1)
-        return data
+        resampled: np.ndarray = np.repeat(
+            audio_data,
+            self.sample_rate//original_rate,
+            axis=1,
+        )
+        return resampled
 
     def _split_blocks(
             self,
@@ -115,13 +125,16 @@ class JackAudioClient(AudioClient):
     def play(
             self,
             data: Union[list[list[float]], np.ndarray],
-            blocking: Optional[bool] = False,
+            blocking: bool = False,
             samplerate: Optional[int] = None,
     ) -> None:
         """ Play audio data on the audio server. """
 
         if isinstance(data, list):
             data = np.array(data, dtype=self.dtype)
+
+        if samplerate is None:
+            samplerate = self.sample_rate
 
         if self.auto_resample and samplerate != self.sample_rate:
             data = self.resample(data=data, original_rate=samplerate)

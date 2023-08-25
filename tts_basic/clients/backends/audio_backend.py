@@ -2,7 +2,9 @@
 from abc import ABC
 from abc import abstractmethod
 from typing import Optional
+from typing import Union
 
+import numpy as np
 
 class AudioBackend(ABC):
     """ An abstract class for an audio backend. """
@@ -20,7 +22,7 @@ class AudioBackend(ABC):
     @abstractmethod
     def play(
         self,
-        data: list[list[float]],
+        data: Union[list[list[float]], np.ndarray],
         blocking: Optional[bool] = False,
     ) -> None:
         pass

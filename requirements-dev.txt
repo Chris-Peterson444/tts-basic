@@ -1,6 +1,8 @@
 TTS
 JACK-Client
+types-JACK-Client
 numpy
 pulsectl
 sounddevice
+mypy
 
