@@ -1,39 +1,4 @@
-# tts-basic
-
-A collection of Text-to-Speech (TTS) engine and audio client wrappers to
-allow quickly writing a TTS program in Python which can output the audio to
-a virtual microphone.
-
-# Why?
-
-I had to go on vocal rest for a few days and charades wasn't working! I also
-wanted to come up with a programtic way to interface with my audio systems.
-Creating virtual audio devices and connecting them properly usually required
-a few different commands that I seldom used - meaning I usually to look it up
-everytime - and required using a separate program to manage the audio graph.
-Furthermore, the
-Instead, I wanted to have a single application I could run that would create
-the necessary devices, connect them up as needed, and then tear it down on
-completion.
-
-# Usage
-
-
-## Linux
-
-
-## Windows and MacOS
-
-
-See [examples.py](examples.py) for
-
-# Text-to-Speech
-Checkout [coqui-ai](https://github.com/coqui-ai/TTS) for the TTS info. It seems
-to be the best ML-based TTS library I could find. In particular I found the
-VITS model to perform the best. The model is small (~500mb) and works very fast
-on GPU and quite fast (<1s) on CPU.
-
-# Audio routing
+# Audio Clients and Routing
 
 The hardest part in my opinion. Right now this works for systems running
 PulseAudio compatible servers. In my case (Ubuntu 22.04) I'm running PipeWire
