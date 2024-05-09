@@ -1,14 +1,12 @@
 """ Describes the AudioClient ABC for audio clients to implement. """
-from abc import ABC
-from abc import abstractmethod
+
+from abc import ABC, abstractmethod
 from types import TracebackType
-from typing import Optional
-from typing import Type
-from typing import Union
+from typing import Optional, Type, Union
 
 
 class AudioClient(ABC):
-    """ An abstract class for an audio client to interface with the system
+    """An abstract class for an audio client to interface with the system
     audio server (e.g., pulse, jack, pipewire).
 
     This class is used to create a context manager to handle creating and
@@ -24,16 +22,16 @@ class AudioClient(ABC):
     pipe the output to the existing audio device.
     """
 
-    @ abstractmethod
-    def __enter__(self) -> 'AudioClient':
+    @abstractmethod
+    def __enter__(self) -> "AudioClient":
         pass
 
-    @ abstractmethod
+    @abstractmethod
     def __exit__(
-            self,
-            exc_type: Optional[Type[BaseException]],
-            exc_value: Optional[BaseException],
-            traceback: Optional[TracebackType],
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
     ) -> Union[bool, None]:
         pass
 
